@@ -54,28 +54,58 @@ class HomeScreen extends StatelessWidget {
       body: Consumer<DeckListModel>(
         builder: (context, value, child) {
           final model = Provider.of<DeckListModel>(context, listen: false);
-          return ListView(
+          return ReorderableListView(
+              onReorder: (int oldIndex, int newIndex) =>
+                  Provider.of<DeckListModel>(context, listen: false)
+                      .swap(oldIndex, newIndex),
               children: value.decks
                   .map(
                     (deck) => ChangeNotifierProvider.value(
+                      key: ValueKey(deck.id),
                       value: deck,
                       child: Consumer<DeckModel>(
-                        builder: (context, deck, child) => ListTile(
-                          title: Text(deck.name),
-                          trailing: Text(deck.cardIds.length.toString()),
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            DeckEditScreen.routeName,
-                            arguments: deck,
+                        builder: (context, deck, child) => Dismissible(
+                          key: ValueKey("${deck.id}-dismissible"),
+                          onDismissed: (direction) => model.deleteDeck(deck),
+                          confirmDismiss: (direction) => showDialog(
+                            context: context,
+                            builder: (context) => DeleteDialog(deck),
                           ),
-                          onLongPress: () async {
-                            var shouldDelete = await showDialog(
-                                context: context,
-                                builder: (context) => DeleteDialog(deck));
-                            if (shouldDelete) {
-                              model.deleteDeck(deck);
-                            }
-                          },
+                          secondaryBackground: Container(
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Theme.of(context).colorScheme.onError,
+                                ),
+                              ),
+                            ),
+                          ),
+                          background: Container(
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Theme.of(context).colorScheme.onError,
+                                ),
+                              ),
+                            ),
+                          ),
+                          child: ListTile(
+                            title: Text(deck.name),
+                            trailing: Text(deck.cardIds.length.toString()),
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              DeckEditScreen.routeName,
+                              arguments: deck,
+                            ),
+                          ),
                         ),
                       ),
                     ),

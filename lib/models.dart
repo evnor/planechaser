@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:scryfall_api/scryfall_api.dart';
 import 'package:localstore/localstore.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
   final ScryfallApiClient client = ScryfallApiClient();
@@ -90,6 +91,15 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
+  void swap(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = _decks.removeAt(oldIndex);
+    _decks.insert(newIndex, item);
+    notifyListeners();
+  }
+
   void addDeck(DeckModel deck, {int? index}) {
     if (index == null) {
       _decks.add(deck);
@@ -124,10 +134,12 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
 
 // Should this have ChangeNotifier?
 class DeckModel extends ChangeNotifier {
+  static final Uuid uuid = Uuid();
   List<String> _cardIds = [];
   List<String> get cardIds => List.unmodifiable(_cardIds);
   String _name = "New Deck";
   String get name => _name;
+  final id = uuid.v1();
 
   DeckModel();
 
