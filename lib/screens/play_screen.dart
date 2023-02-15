@@ -39,7 +39,21 @@ class _PlayScreenState extends State<PlayScreen> {
     return Consumer<DeckListModel>(builder: (context, model, _) {
       final currentCard = model.cards[deck.cardIds[permutation[index]]]!;
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          actions: [
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  if (!isVisible) {
+                    index = (index - 1) % permutation.length;
+                  }
+                  isVisible = !isVisible;
+                });
+              },
+              icon: const Icon(Icons.undo),
+            ),
+          ],
+        ),
         backgroundColor: Colors.black,
         body: GestureDetector(
           onTap: () {
