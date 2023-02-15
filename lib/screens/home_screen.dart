@@ -40,11 +40,7 @@ class HomeScreen extends StatelessWidget {
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) {
-                  return const Dialog(
-                    child: Text("Temporary"),
-                  );
-                },
+                builder: (context) => const ImportDialog(),
               );
             },
             icon: const Icon(Icons.content_paste),
@@ -53,64 +49,102 @@ class HomeScreen extends StatelessWidget {
       ),
       body: Consumer<DeckListModel>(
         builder: (context, value, child) {
+          late bool isDesktop;
+          switch (Theme.of(context).platform) {
+            case TargetPlatform.linux:
+            case TargetPlatform.macOS:
+            case TargetPlatform.windows:
+              isDesktop = true;
+              break;
+            default:
+              isDesktop = true;
+          }
           final model = Provider.of<DeckListModel>(context, listen: false);
           return ReorderableListView(
+              buildDefaultDragHandles: false,
               onReorder: (int oldIndex, int newIndex) =>
                   Provider.of<DeckListModel>(context, listen: false)
                       .swap(oldIndex, newIndex),
-              children: value.decks
-                  .map(
-                    (deck) => ChangeNotifierProvider.value(
-                      key: ValueKey(deck.id),
-                      value: deck,
-                      child: Consumer<DeckModel>(
-                        builder: (context, deck, child) => Dismissible(
-                          key: ValueKey("${deck.id}-dismissible"),
-                          onDismissed: (direction) => model.deleteDeck(deck),
-                          confirmDismiss: (direction) => showDialog(
-                            context: context,
-                            builder: (context) => DeleteDialog(deck),
-                          ),
-                          secondaryBackground: Container(
-                            color: Theme.of(context).colorScheme.errorContainer,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: Icon(
-                                  Icons.delete,
-                                  color: Theme.of(context).colorScheme.onError,
-                                ),
+              children: value.decks.asMap().entries.map(
+                (entry) {
+                  final deck = entry.value;
+                  final index = entry.key;
+                  return ChangeNotifierProvider.value(
+                    key: ValueKey(deck.id),
+                    value: deck,
+                    child: Consumer<DeckModel>(
+                      builder: (context, deck, child) => Dismissible(
+                        key: ValueKey("${deck.id}-dismissible"),
+                        onDismissed: (direction) => model.deleteDeck(deck),
+                        confirmDismiss: (direction) => showDialog(
+                          context: context,
+                          builder: (context) => DeleteDialog(deck),
+                        ),
+                        secondaryBackground: Container(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Icon(
+                                Icons.delete,
+                                color: Theme.of(context).colorScheme.onError,
                               ),
                             ),
                           ),
-                          background: Container(
-                            color: Theme.of(context).colorScheme.errorContainer,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Icon(
-                                  Icons.delete,
-                                  color: Theme.of(context).colorScheme.onError,
-                                ),
+                        ),
+                        background: Container(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Icon(
+                                Icons.delete,
+                                color: Theme.of(context).colorScheme.onError,
                               ),
                             ),
                           ),
-                          child: ListTile(
-                            title: Text(deck.name),
-                            trailing: Text(deck.cardIds.length.toString()),
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              DeckEditScreen.routeName,
-                              arguments: deck,
-                            ),
+                        ),
+                        child: ListTile(
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  deck.name,
+                                  style:
+                                      Theme.of(context).textTheme.headlineSmall,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 10,
+                              ),
+                              Text(
+                                deck.cardIds.length.toString(),
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
+                              ),
+                            ],
+                          ),
+                          trailing: isDesktop
+                              ? ReorderableDragStartListener(
+                                  index: index,
+                                  child: const Icon(Icons.drag_handle))
+                              : Container(),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            DeckEditScreen.routeName,
+                            arguments: deck,
                           ),
                         ),
                       ),
                     ),
-                  )
-                  .toList());
+                  );
+                },
+              ).toList());
         },
       ),
     );
