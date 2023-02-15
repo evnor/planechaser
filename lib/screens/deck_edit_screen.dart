@@ -16,12 +16,6 @@ class DeckEditScreen extends StatelessWidget {
     final deck = ModalRoute.of(context)!.settings.arguments as DeckModel;
     return WillPopScope(
       onWillPop: () async {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Saving"),
-            duration: Duration(seconds: 1),
-          ),
-        );
         await Provider.of<DeckListModel>(context, listen: false).saveDecks();
         return Future.value(true);
       },

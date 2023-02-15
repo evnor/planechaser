@@ -5,7 +5,7 @@ import 'package:scryfall_api/scryfall_api.dart';
 import 'package:localstore/localstore.dart';
 import 'package:http/http.dart' as http;
 
-class DeckListModel extends ChangeNotifier {
+class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
   final ScryfallApiClient client = ScryfallApiClient();
   final Localstore db = Localstore.instance;
 
@@ -17,6 +17,10 @@ class DeckListModel extends ChangeNotifier {
   Iterable<MtgCard> get allCards => _cards.values;
 
   DeckListModel();
+  DeckListModel.fromJson(Map<String, dynamic> json) {
+    final decks = json["decks"] as List<dynamic>;
+    _decks.addAll(decks.map((e) => DeckModel.fromJson(e)));
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -27,12 +31,26 @@ class DeckListModel extends ChangeNotifier {
   void init() {
     loadCards();
     loadDecks();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
+    switch (state) {
+      case AppLifecycleState.resumed:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+      case AppLifecycleState.paused:
+        await saveDecks();
+    }
   }
 
   void loadDecks() async {
     final json = await db.collection("Planechaser").doc("decks").get();
-    final decks = json?["decks"] as List<dynamic>;
-    _decks.addAll(decks.map((e) => DeckModel.fromJson(e)));
+    if (json == null) return;
+    final decks = DeckListModel.fromJson(json);
+    addFromDeckList(decks);
   }
 
   Future<void> saveDecks() async {
@@ -81,6 +99,13 @@ class DeckListModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addFromDeckList(DeckListModel deckList) {
+    if (deckList.decks.isNotEmpty) {
+      _decks.addAll(deckList.decks);
+      notifyListeners();
+    }
+  }
+
   void deleteDeck(DeckModel deck) {
     final len = _decks.length;
     _decks.remove(deck);
@@ -92,7 +117,7 @@ class DeckListModel extends ChangeNotifier {
   @override
   void dispose() async {
     client.close();
-    await saveDecks();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }
