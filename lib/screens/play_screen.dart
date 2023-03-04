@@ -73,7 +73,7 @@ class _PlayScreenState extends State<PlayScreen> {
                   ? (currentCard.imageUris != null
                       ? CachedNetworkImage(
                           fadeInDuration: const Duration(milliseconds: 200),
-                          imageUrl: currentCard.imageUris!.large.toString(),
+                          imageUrl: currentCard.imageUris!.normal.toString(),
                           fit: BoxFit.contain,
                         )
                       : Container(
