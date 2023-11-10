@@ -1,4 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
+import 'package:scryfall_api/src/models/mtg_card.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -35,9 +38,21 @@ class _PlayScreenState extends State<PlayScreen> {
   }
 
   @override
+  void dispose() {
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    WakelockPlus.enable();
     return Consumer<DeckListModel>(builder: (context, model, _) {
-      final currentCard = model.cards[deck.cardIds[permutation[index]]]!;
+      final MtgCard? currentCard;
+      if (permutation.isNotEmpty) {
+        currentCard = model.cards[deck.cardIds[permutation[index]]]!;
+      } else {
+        currentCard = null;
+      }
       return Scaffold(
         appBar: AppBar(
           actions: [
@@ -70,10 +85,10 @@ class _PlayScreenState extends State<PlayScreen> {
             child: AspectRatio(
               aspectRatio: 3.5 / 5,
               child: isVisible
-                  ? (currentCard.imageUris != null
+                  ? (currentCard?.imageUris != null
                       ? CachedNetworkImage(
                           fadeInDuration: const Duration(milliseconds: 200),
-                          imageUrl: currentCard.imageUris!.normal.toString(),
+                          imageUrl: currentCard!.imageUris!.normal.toString(),
                           fit: BoxFit.contain,
                         )
                       : Container(
