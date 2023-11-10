@@ -60,7 +60,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
 
   void loadCards() async {
     var paginableList = await client.searchCards(
-      "set:opca",
+      "t:plane OR t:phenomenon",
       sortingOrder: SortingOrder.set,
       rollupMode: RollupMode.cards,
     );
