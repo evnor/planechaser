@@ -41,6 +41,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
         break;
       case AppLifecycleState.paused:
         await saveDecks();
