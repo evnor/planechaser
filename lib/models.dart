@@ -135,6 +135,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
 
 // Should this have ChangeNotifier?
 class DeckModel extends ChangeNotifier {
+  // ignore: prefer_const_constructors
   static final Uuid uuid = Uuid();
   List<String> _cardIds = [];
   List<String> get cardIds => List.unmodifiable(_cardIds);

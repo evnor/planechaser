@@ -24,10 +24,11 @@ class _DeckEditScreenState extends State<DeckEditScreen> {
   @override
   Widget build(BuildContext context) {
     final deck = ModalRoute.of(context)!.settings.arguments as DeckModel;
-    return WillPopScope(
-      onWillPop: () async {
-        await Provider.of<DeckListModel>(context, listen: false).saveDecks();
-        return Future.value(true);
+    return PopScope(
+      onPopInvoked: (didPop) async {
+        if (didPop) {
+          await Provider.of<DeckListModel>(context, listen: false).saveDecks();
+        }
       },
       child: ChangeNotifierProvider.value(
         value: deck,

@@ -22,7 +22,7 @@ class PlanechaserApp extends StatelessWidget {
         theme: ThemeData.dark(),
         routes: {
           HomeScreen.routeName: (context) => const HomeScreen(),
-          DeckEditScreen.routeName: (context) => DeckEditScreen(),
+          DeckEditScreen.routeName: (context) => const DeckEditScreen(),
           PlayScreen.routeName: (context) => const PlayScreen(),
         },
       ),
