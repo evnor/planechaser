@@ -135,7 +135,6 @@ class _DeckEditScreenState extends State<DeckEditScreen> {
       return;
     }
     setState(() {
-      debugPrint("Setting state '$text'");
       _searchResult = Future.microtask(() {
         final reg = RegExp(text, caseSensitive: false);
         final value = model.allCards
@@ -143,7 +142,6 @@ class _DeckEditScreenState extends State<DeckEditScreen> {
                 card.name.contains(reg) || card.typeLine.contains(reg))
             .toList()
           ..sort((a, b) => a.name.compareTo(b.name));
-        debugPrint("result length: ${value.length}");
         return value;
       });
     });
