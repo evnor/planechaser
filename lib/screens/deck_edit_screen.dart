@@ -5,11 +5,21 @@ import 'package:planechaser/screens/play_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:scryfall_api/scryfall_api.dart';
 
-class DeckEditScreen extends StatelessWidget {
-  final ScrollController _scrollController = ScrollController();
-  DeckEditScreen({super.key});
+class DeckEditScreen extends StatefulWidget {
+  const DeckEditScreen({super.key});
 
   static const routeName = "/deckEdit";
+
+  @override
+  State<DeckEditScreen> createState() => _DeckEditScreenState();
+}
+
+class _DeckEditScreenState extends State<DeckEditScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  final TextEditingController _searchController = TextEditingController();
+
+  Future<List<MtgCard>>? _searchResult;
 
   @override
   Widget build(BuildContext context) {
@@ -36,49 +46,107 @@ class DeckEditScreen extends StatelessWidget {
               )
             ],
           ),
-          bottomNavigationBar: Selector<DeckModel, int>(
-            selector: (_, deck) => deck.cardIds.length,
-            builder: (context, value, child) => Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: Text(
-                  "Cards: $value",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18),
+          bottomNavigationBar: BottomAppBar(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Selector<DeckModel, int>(
+                  selector: (_, deck) => deck.cardIds.length,
+                  builder: (context, value, child) => Text(
+                    "Cards: $value",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 18),
+                  ),
                 ),
-              ),
+                const SizedBox(
+                  width: 8.0,
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                        hintText: 'Search', border: InputBorder.none),
+                    onChanged: (text) => onSearchTextChanged(context, text),
+                  ),
+                ),
+              ],
             ),
           ),
-          body: Consumer<DeckListModel>(
-            builder: (context, value, child) {
-              final cardList = value.allIds
-                  .where((id) => deck.cardIds.contains(id))
-                  .map((id) => value.cards[id])
-                  .whereType<MtgCard>()
-                  .toList()
-                ..sort((a, b) => a.name.compareTo(b.name));
-              cardList.addAll(value.allIds
-                  .where((id) => !deck.cardIds.contains(id))
-                  .map((id) => value.cards[id])
-                  .whereType<MtgCard>()
-                  .toList()
-                ..sort((a, b) => a.name.compareTo(b.name)));
-              return Scrollbar(
-                controller: _scrollController,
-                child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: cardList.length,
-                  itemBuilder: (context, index) =>
-                      CardListView(cardList[index]),
-                  prototypeItem: CardListView(value.allCards.first),
-                ),
-              );
-            },
+          body: Scrollbar(
+            controller: _scrollController,
+            child: FutureBuilder(
+                future: _searchResult,
+                builder: (context, result) {
+                  if (_searchResult == null) {
+                    return Consumer<DeckListModel>(
+                      builder: (context, value, child) {
+                        final cardList = value.allIds
+                            .where((id) => deck.cardIds.contains(id))
+                            .map((id) => value.cards[id])
+                            .whereType<MtgCard>()
+                            .toList()
+                          ..sort((a, b) => a.name.compareTo(b.name));
+                        cardList.addAll(value.allIds
+                            .where((id) => !deck.cardIds.contains(id))
+                            .map((id) => value.cards[id])
+                            .whereType<MtgCard>()
+                            .toList()
+                          ..sort((a, b) => a.name.compareTo(b.name)));
+                        return ListView.builder(
+                          controller: _scrollController,
+                          itemCount: cardList.length,
+                          itemBuilder: (context, index) =>
+                              CardListView(cardList[index]),
+                          prototypeItem: CardListView(value.allCards.first),
+                        );
+                      },
+                    );
+                  } else if (result.hasData && result.data != null) {
+                    return ListView.builder(
+                      controller: _scrollController,
+                      itemCount: result.data!.length,
+                      itemBuilder: (context, index) =>
+                          CardListView(result.data![index]),
+                      prototypeItem: result.data!.isNotEmpty
+                          ? CardListView(result.data!.first)
+                          : null,
+                    );
+                  } else if (result.hasError) {
+                    return Scaffold(
+                      backgroundColor: Colors.red,
+                      body: Text(result.error.toString()),
+                    );
+                  } else {
+                    return const CircularProgressIndicator();
+                  }
+                }),
           ),
         ),
       ),
     );
+  }
+
+  void onSearchTextChanged(BuildContext context, String text) async {
+    final model = Provider.of<DeckListModel>(context, listen: false);
+    if (text.isEmpty || model.cards.isEmpty) {
+      setState(() {
+        _searchResult = null;
+      });
+      return;
+    }
+    setState(() {
+      debugPrint("Setting state '$text'");
+      _searchResult = Future.microtask(() {
+        final reg = RegExp(text, caseSensitive: false);
+        final value = model.allCards
+            .where((card) =>
+                card.name.contains(reg) || card.typeLine.contains(reg))
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
+        debugPrint("result length: ${value.length}");
+        return value;
+      });
+    });
   }
 }
 
