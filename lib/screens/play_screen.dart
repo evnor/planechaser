@@ -2,6 +2,7 @@ import 'dart:collection';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:number_selector/number_selector.dart';
+import 'package:planechaser/screens/deck_action_screen.dart';
 import 'package:scryfall_api/scryfall_api.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter/material.dart';
@@ -88,7 +89,11 @@ class _PlayScreenState extends State<PlayScreen> {
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (context) => const DeckActionDialog(),
+                      builder: (context) => DeckActionDialog(
+                        deck: deck,
+                        model: model,
+                        permutation: permutation,
+                      ),
                     );
                   },
                   icon: const Icon(Icons.remove_red_eye_outlined),
@@ -179,7 +184,14 @@ enum DeckActionKind {
 }
 
 class DeckActionDialog extends StatefulWidget {
-  const DeckActionDialog({super.key});
+  final DeckModel deck;
+  final DeckListModel model;
+  final DoubleLinkedQueue<int> permutation;
+  const DeckActionDialog(
+      {super.key,
+      required this.deck,
+      required this.model,
+      required this.permutation});
 
   @override
   State<DeckActionDialog> createState() => _DeckActionDialogState();
@@ -245,7 +257,7 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: NumberSelector(
-                        min: 0,
+                        min: 1,
                         width: null,
                         height: 36.0,
                         backgroundColor: Colors.transparent,
@@ -274,7 +286,16 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
               child: FilledButton(
                 child: const Text("Search"),
                 onPressed: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => DeckActionScreen(
+                        deck: widget.deck,
+                        permutation: widget.permutation,
+                        deckActionKind: _selectedLookAhead,
+                        valueX: _valueX,
+                      ),
+                    ),
+                  );
                 },
               ),
             )
