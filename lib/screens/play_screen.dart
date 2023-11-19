@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:number_selector/number_selector.dart';
 import 'package:scryfall_api/scryfall_api.dart';
@@ -20,9 +22,8 @@ class PlayScreen extends StatefulWidget {
 
 class _PlayScreenState extends State<PlayScreen> {
   late DeckModel deck;
-  late List<int> permutation;
-  int index = 0;
-  bool isVisible = false;
+  late DoubleLinkedQueue<int> permutation;
+  List<int> openCards = [];
 
   @override
   void initState() {
@@ -33,14 +34,40 @@ class _PlayScreenState extends State<PlayScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     deck = ModalRoute.of(context)!.settings.arguments as DeckModel;
-    permutation = List.generate(deck.cardIds.length, (index) => index)
-      ..shuffle();
+    permutation = DoubleLinkedQueue.from(
+        List.generate(deck.cardIds.length, (index) => index)..shuffle());
   }
 
   @override
   void dispose() {
     WakelockPlus.disable();
     super.dispose();
+  }
+
+  MtgCard? getCard(int idx, DeckListModel model, DeckModel deck) {
+    return model.cards[deck.cardIds[idx]];
+  }
+
+  void nextCard() {
+    if (openCards.isEmpty) {
+      openCards = [permutation.removeFirst()];
+    } else {
+      for (int i in openCards..shuffle()) {
+        permutation.addLast(i);
+      }
+      openCards = [];
+    }
+  }
+
+  void prevCard() {
+    if (openCards.isEmpty) {
+      openCards = [permutation.removeLast()];
+    } else {
+      for (int i in openCards..shuffle()) {
+        permutation.addFirst(i);
+      }
+      openCards = [];
+    }
   }
 
   @override
@@ -52,75 +79,92 @@ class _PlayScreenState extends State<PlayScreen> {
           WakelockPlus.disable();
         }
       },
-      child: Consumer<DeckListModel>(builder: (context, model, _) {
-        final MtgCard? currentCard;
-        if (permutation.isNotEmpty) {
-          currentCard = model.cards[deck.cardIds[permutation[index]]]!;
-        } else {
-          currentCard = null;
-        }
-        return Scaffold(
-          appBar: AppBar(
-            actions: [
-              IconButton(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => const DeckActionDialog(),
-                  );
-                },
-                icon: const Icon(Icons.remove_red_eye_outlined),
-              ),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    if (!isVisible) {
-                      index = (index - 1) % permutation.length;
-                    }
-                    isVisible = !isVisible;
-                  });
-                },
-                icon: const Icon(Icons.undo),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.black,
-          body: GestureDetector(
-            onTap: () {
-              setState(() {
-                if (isVisible) {
-                  index = (index + 1) % permutation.length;
-                }
-                isVisible = !isVisible;
-              });
-            },
-            child: SizedBox(
-              height: double.infinity,
-              width: double.infinity,
-              child: AspectRatio(
-                aspectRatio: 3.5 / 5,
-                child: isVisible
-                    ? (currentCard?.imageUris != null
-                        ? CachedNetworkImage(
-                            fadeInDuration: const Duration(milliseconds: 200),
-                            imageUrl: currentCard!.imageUris!.normal.toString(),
-                            fit: BoxFit.contain,
-                          )
-                        : Container(
-                            color: Colors.red,
-                          ))
-                    : RotatedBox(
-                        quarterTurns: 3,
-                        child: CachedNetworkImage(
-                            imageUrl: PlayScreen.cardBackUrl,
-                            fit: BoxFit.contain),
-                      ),
+      child: Consumer<DeckListModel>(
+        builder: (context, model, _) {
+          return Scaffold(
+            appBar: AppBar(
+              actions: [
+                IconButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const DeckActionDialog(),
+                    );
+                  },
+                  icon: const Icon(Icons.remove_red_eye_outlined),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      prevCard();
+                    });
+                  },
+                  icon: const Icon(Icons.undo),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.black,
+            body: GestureDetector(
+              onTap: () {
+                setState(() {
+                  nextCard();
+                });
+              },
+              child: ListView(
+                children: openCards.isNotEmpty
+                    ? [
+                        for (int i in openCards)
+                          CardDisplay(
+                            card: getCard(i, model, deck),
+                            rotated: openCards.length <= 1,
+                          ),
+                      ]
+                    : [
+                        const CardDisplay(
+                          rotated: true,
+                        )
+                      ],
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
+  }
+}
+
+class CardDisplay extends StatelessWidget {
+  final MtgCard? card;
+  final bool rotated;
+  const CardDisplay({super.key, this.card, this.rotated = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget child;
+    if (card != null) {
+      child = Hero(
+        tag: card!.oracleId,
+        child: card?.imageUris != null
+            ? RotatedBox(
+                quarterTurns: rotated ? 0 : 1,
+                child: CachedNetworkImage(
+                  fadeInDuration: const Duration(milliseconds: 200),
+                  imageUrl: card!.imageUris!.normal.toString(),
+                  fit: BoxFit.contain,
+                ),
+              )
+            : Container(
+                color: Colors.red,
+              ),
+      );
+    } else {
+      child = RotatedBox(
+        quarterTurns: rotated ? 3 : 0,
+        child: CachedNetworkImage(
+            imageUrl: PlayScreen.cardBackUrl, fit: BoxFit.contain),
+      );
+    }
+    return AspectRatio(aspectRatio: 3.5 / 5, child: child);
   }
 }
 
@@ -229,7 +273,7 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
               alignment: Alignment.centerRight,
               child: FilledButton(
                 child: const Text("Search"),
-                onPressed: () {
+                onPressed: () async {
                   Navigator.of(context).pop();
                 },
               ),
