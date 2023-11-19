@@ -202,28 +202,38 @@ class _ImportDialogState extends State<ImportDialog> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              "Import",
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.start,
+            ),
             TextField(
               controller: _controller,
             ),
-            Row(children: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text("Cancel"),
-              ),
-              TextButton(
-                onPressed: () {
-                  final decklists =
-                      DeckListModel.fromJson(jsonDecode(_controller.text));
-                  Provider.of<DeckListModel>(context, listen: false)
-                      .addFromDeckList(decklists);
-                  Navigator.pop(context);
-                },
-                child: const Text("Load"),
-              ),
-            ])
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Cancel"),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final decklists =
+                        DeckListModel.fromJson(jsonDecode(_controller.text));
+                    Provider.of<DeckListModel>(context, listen: false)
+                        .addFromDeckList(decklists);
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Load"),
+                ),
+              ],
+            )
           ],
         ),
       ),
