@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fast_cached_network_image/fast_cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:planechaser/models.dart';
 import 'package:planechaser/screens/play_screen.dart';
@@ -98,7 +98,9 @@ class _DeckEditScreenState extends State<DeckEditScreen> {
                           itemCount: cardList.length,
                           itemBuilder: (context, index) =>
                               CardListView(cardList[index]),
-                          prototypeItem: CardListView(value.allCards.first),
+                          prototypeItem: value.allCards.isNotEmpty
+                              ? CardListView(value.allCards.first)
+                              : null,
                         );
                       },
                     );
@@ -160,34 +162,21 @@ class CardListView extends StatelessWidget {
             aspectRatio: 5 / 3.5,
             child: RotatedBox(
               quarterTurns: 1,
-              child: CachedNetworkImage(
+              child: FastCachedImage(
                 fit: BoxFit.contain,
-                imageUrl: card.imageUris!.normal.toString(),
-                fadeInDuration: const Duration(milliseconds: 200),
-                fadeOutDuration: const Duration(milliseconds: 200),
-                placeholder: (context, url) => RotatedBox(
+                url: card.imageUris!.normal.toString(),
+                fadeInDuration: const Duration(milliseconds: 150),
+                loadingBuilder: (context, progress) => RotatedBox(
                   quarterTurns: 3,
                   child: AspectRatio(
                     aspectRatio: 3.5 / 5,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(left: 16.0),
-                            child: Text(
-                              card.name,
-                              style: Theme.of(context).textTheme.headlineSmall,
-                            ),
-                          ),
-                          Text(
-                            card.oracleText ?? "",
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                        ],
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: CircularProgressIndicator(
+                          color: Theme.of(context).highlightColor,
+                          value: 0.25,
+                        ),
                       ),
                     ),
                   ),

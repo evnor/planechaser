@@ -1,6 +1,6 @@
 import 'dart:collection';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fast_cached_network_image/fast_cached_network_image.dart';
 import 'package:number_selector/number_selector.dart';
 import 'package:planechaser/screens/deck_action_screen.dart';
 import 'package:scryfall_api/scryfall_api.dart';
@@ -152,9 +152,51 @@ class CardDisplay extends StatelessWidget {
         child: card?.imageUris != null
             ? RotatedBox(
                 quarterTurns: rotated ? 0 : 1,
-                child: CachedNetworkImage(
+                child: FastCachedImage(
                   fadeInDuration: const Duration(milliseconds: 200),
-                  imageUrl: card!.imageUris!.normal.toString(),
+                  url: card!.imageUris!.normal.toString(),
+                  loadingBuilder: (context, progress) => RotatedBox(
+                    quarterTurns: rotated ? 0 : 3,
+                    child: AspectRatio(
+                      aspectRatio: 3.5 / 5,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: CircularProgressIndicator(
+                            color: Theme.of(context).highlightColor,
+                            value: 0.25,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  errorBuilder: (context, obj, trace) => Card(
+                    child: AspectRatio(
+                      aspectRatio: 3.5 / 5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 16.0),
+                              child: Text(
+                                card!.name,
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
+                              ),
+                            ),
+                            Text(
+                              card!.oracleText ?? "",
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   fit: BoxFit.contain,
                 ),
               )
@@ -165,8 +207,8 @@ class CardDisplay extends StatelessWidget {
     } else {
       child = RotatedBox(
         quarterTurns: rotated ? 3 : 0,
-        child: CachedNetworkImage(
-            imageUrl: PlayScreen.cardBackUrl, fit: BoxFit.contain),
+        child: const FastCachedImage(
+            url: PlayScreen.cardBackUrl, fit: BoxFit.contain),
       );
     }
     return AspectRatio(aspectRatio: 3.5 / 5, child: child);
