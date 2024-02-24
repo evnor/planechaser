@@ -73,7 +73,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
     );
     _cards.addAll(paginableList.data
         .asMap()
-        .map((key, value) => MapEntry(value.id, value)));
+        .map((key, value) => MapEntry(value.oracleId, value)));
     var delay = const Duration(milliseconds: 75);
     while (paginableList.hasMore) {
       await Future.delayed(delay, () {
@@ -91,7 +91,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
           );
           _cards.addAll(paginableList.data
               .asMap()
-              .map((key, value) => MapEntry(value.id, value)));
+              .map((key, value) => MapEntry(value.oracleId, value)));
         });
       });
     }
@@ -132,6 +132,25 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
       Logger().i("Removed deck '${deck._name}'");
       notifyListeners();
     }
+  }
+
+  Future<MtgCard?> fetchId(String id) async {
+    var card = _cards[id];
+    if (card != null) return card;
+    Logger().i("Fetching $id");
+    try {
+      var list = await client.searchCards("oracleid:$id");
+      if (list.data.isNotEmpty) {
+        return list.data.first;
+      }
+    } on ScryfallException {
+      Logger().i("Trying to search for card (not oracle) id: $id");
+      var card = await client.getCardById(id);
+      return card;
+    } catch (e) {
+      Logger().e("Failed to get id $id", error: e);
+    }
+    return null;
   }
 
   @override
