@@ -2,10 +2,13 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:scryfall_api/scryfall_api.dart';
 import 'package:localstore/localstore.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
+
+import 'screens/deck_action_screen.dart';
 
 class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
   final ScryfallApiClient client = ScryfallApiClient();
@@ -54,10 +57,12 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
     if (json == null) return;
     final decks = DeckListModel.fromJson(json);
     addFromDeckList(decks);
+    Logger().i("Loaded ${decks._decks.length} decks");
   }
 
   Future<void> saveDecks() async {
     await db.collection("Planechaser").doc("decks").set(toJson());
+    Logger().i("Saved ${_decks.length} decks");
   }
 
   void loadCards() async {
@@ -90,6 +95,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
         });
       });
     }
+    Logger().i("Loaded ${_cards.length} cards");
     notifyListeners();
   }
 
@@ -108,6 +114,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
     } else {
       _decks.insert(index, deck);
     }
+    Logger().i("Added deck at ${index == null ? "end" : "index $index"}");
     notifyListeners();
   }
 
@@ -122,6 +129,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
     final len = _decks.length;
     _decks.remove(deck);
     if (len != _decks.length) {
+      Logger().i("Removed deck '${deck._name}'");
       notifyListeners();
     }
   }
@@ -172,6 +180,12 @@ class DeckModel extends ChangeNotifier {
     _name = name;
     notifyListeners();
   }
+
+  int? indexOfId(String id) {
+    var idx = _cardIds.indexOf(id);
+    if (idx == -1) return null;
+    return idx;
+  }
 }
 
 class PlayState extends ChangeNotifier {
@@ -190,8 +204,12 @@ class PlayState extends ChangeNotifier {
     }
   }
 
-  void nextCard() {
+  void _saveHistory() {
     history.addFirst((List.from(openCards), List.from(permutation)));
+  }
+
+  void nextCard() {
+    _saveHistory();
     _trimHistory();
     if (openCards.isEmpty) {
       openCards = [permutation.removeFirst()];
@@ -201,6 +219,7 @@ class PlayState extends ChangeNotifier {
       }
       openCards = [];
     }
+    Logger().i((history.length, openCards));
     notifyListeners();
   }
 
@@ -219,6 +238,46 @@ class PlayState extends ChangeNotifier {
         openCards = [];
       }
     }
+    Logger().i((history.length, openCards));
+    notifyListeners();
+  }
+
+  void applyAction(
+    Map<String, CardAction> cardActions,
+    List<String> otherRevealedCards,
+    bool randomizeRemaining,
+    bool planeswalkAway,
+    DeckModel deck,
+  ) {
+    _saveHistory();
+    var toBottom = otherRevealedCards
+        .map((e) => deck.indexOfId(e))
+        .whereType<int>()
+        .toList();
+    var actions = cardActions.entries
+        .map((e) => (deck.indexOfId(e.key), e.value))
+        .where((e) => e.$1 != null);
+    List<int> goTo = [];
+    for (var (idx, action) in actions) {
+      switch (action) {
+        case CardAction.bottom:
+          toBottom.add(idx!);
+        case CardAction.goTo:
+          goTo.add(idx!);
+      }
+    }
+    permutation.removeWhere(
+        (element) => toBottom.contains(element) || goTo.contains(element));
+    var prevCards = openCards;
+    if (planeswalkAway) {
+      openCards = [];
+    }
+    openCards.addAll(goTo);
+    permutation.addAll(toBottom..shuffle());
+    if (planeswalkAway) {
+      permutation.addAll(prevCards..shuffle());
+    }
+    Logger().i((history.length, openCards));
     notifyListeners();
   }
 }

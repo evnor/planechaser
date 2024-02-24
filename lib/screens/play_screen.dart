@@ -1,4 +1,5 @@
 import 'package:fast_cached_network_image/fast_cached_network_image.dart';
+import 'package:logger/logger.dart';
 import 'package:number_selector/number_selector.dart';
 import 'package:planechaser/screens/deck_action_screen.dart';
 import 'package:scryfall_api/scryfall_api.dart';
@@ -20,8 +21,8 @@ class PlayScreen extends StatefulWidget {
 }
 
 class _PlayScreenState extends State<PlayScreen> {
-  late DeckModel deck;
-  late PlayState state;
+  DeckModel? _deck;
+  late PlayState _state;
   DeckActionDialogState dialogState = DeckActionDialogState();
 
   @override
@@ -32,8 +33,11 @@ class _PlayScreenState extends State<PlayScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    deck = ModalRoute.of(context)!.settings.arguments as DeckModel;
-    state = PlayState(deck);
+    var wasInitialized = _deck != null;
+    _deck = ModalRoute.of(context)!.settings.arguments as DeckModel;
+    if (!wasInitialized) {
+      _state = PlayState(_deck!);
+    }
   }
 
   @override
@@ -57,8 +61,11 @@ class _PlayScreenState extends State<PlayScreen> {
       },
       child: Consumer<DeckListModel>(
         builder: (context, model, _) {
-          return ChangeNotifierProvider.value(
-            value: state,
+          return MultiProvider(
+            providers: [
+              ChangeNotifierProvider.value(value: _state),
+              ChangeNotifierProvider.value(value: _deck)
+            ],
             child: Scaffold(
               appBar: AppBar(
                 actions: [
@@ -67,8 +74,8 @@ class _PlayScreenState extends State<PlayScreen> {
                       showDialog(
                         context: context,
                         builder: (context) => DeckActionDialog(
-                          model: model,
-                          playState: state,
+                          deck: _deck!,
+                          playState: _state,
                           dialogState: dialogState,
                         ),
                       );
@@ -76,31 +83,40 @@ class _PlayScreenState extends State<PlayScreen> {
                     icon: const Icon(Icons.remove_red_eye_outlined),
                   ),
                   IconButton(
-                    onPressed: state.undo,
+                    onPressed: _state.undo,
                     icon: const Icon(Icons.undo),
                   ),
                 ],
               ),
               backgroundColor: Colors.black,
-              body: Consumer<PlayState>(
-                builder: (context, state, child) => GestureDetector(
-                  onTap: state.nextCard,
-                  child: ListView(
-                    children: state.openCards.isNotEmpty
-                        ? [
-                            for (int i in state.openCards)
-                              CardDisplay(
-                                card: getCard(i, model, deck),
-                                rotated: state.openCards.length <= 1,
-                              ),
-                          ]
-                        : [
-                            const CardDisplay(
-                              rotated: true,
-                            )
-                          ],
-                  ),
-                ),
+              body: Consumer<DeckModel>(
+                builder: (context, deck, child) =>
+                    Consumer<PlayState>(builder: (context, state, child) {
+                  Logger().i((
+                    "Redrawing card display",
+                    state.history.length,
+                    state.openCards
+                  ));
+                  return GestureDetector(
+                    onTap: state.nextCard,
+                    child: ListView(
+                      children: state.openCards.isNotEmpty
+                          ? [
+                              for (int i in state.openCards)
+                                CardDisplay(
+                                  key: Key(i.toString()),
+                                  card: getCard(i, model, deck),
+                                  rotated: state.openCards.length <= 1,
+                                ),
+                            ]
+                          : [
+                              const CardDisplay(
+                                rotated: true,
+                              )
+                            ],
+                    ),
+                  );
+                }),
               ),
             ),
           );
@@ -119,63 +135,67 @@ class CardDisplay extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget child;
     if (card != null) {
-      child = Hero(
-        tag: card!.oracleId,
-        child: card?.imageUris != null
-            ? RotatedBox(
-                quarterTurns: rotated ? 0 : 1,
-                child: FastCachedImage(
-                  fadeInDuration: const Duration(milliseconds: 200),
-                  url: card!.imageUris!.normal.toString(),
-                  loadingBuilder: (context, progress) => RotatedBox(
-                    quarterTurns: rotated ? 0 : 3,
-                    child: AspectRatio(
-                      aspectRatio: 3.5 / 5,
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: CircularProgressIndicator(
-                            color: Theme.of(context).highlightColor,
-                            value: 0.25,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  errorBuilder: (context, obj, trace) => Card(
-                    child: AspectRatio(
-                      aspectRatio: 3.5 / 5,
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Text(
-                                card!.name,
-                                style:
-                                    Theme.of(context).textTheme.headlineSmall,
+      child =
+              // Hero(
+              //   tag: card!.oracleId,
+              //   child:
+              card?.imageUris != null
+                  ? RotatedBox(
+                      quarterTurns: rotated ? 0 : 1,
+                      child: FastCachedImage(
+                        fadeInDuration: const Duration(milliseconds: 200),
+                        url: card!.imageUris!.normal.toString(),
+                        loadingBuilder: (context, progress) => RotatedBox(
+                          quarterTurns: rotated ? 0 : 3,
+                          child: AspectRatio(
+                            aspectRatio: 3.5 / 5,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: CircularProgressIndicator(
+                                color: Theme.of(context).highlightColor,
+                                value: 0.25,
                               ),
                             ),
-                            Text(
-                              card!.oracleText ?? "",
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                          ],
+                          ),
                         ),
+                        errorBuilder: (context, obj, trace) => Card(
+                          child: AspectRatio(
+                            aspectRatio: 3.5 / 5,
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 16.0),
+                                    child: Text(
+                                      card!.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall,
+                                    ),
+                                  ),
+                                  Text(
+                                    card!.oracleText ?? "",
+                                    style:
+                                        Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        fit: BoxFit.contain,
                       ),
-                    ),
-                  ),
-                  fit: BoxFit.contain,
-                ),
-              )
-            : Container(
-                color: Colors.red,
-              ),
-      );
+                    )
+                  : Container(
+                      color: Colors.red,
+                    )
+          // ,)
+          ;
     } else {
       child = RotatedBox(
         quarterTurns: rotated ? 3 : 0,
@@ -183,7 +203,7 @@ class CardDisplay extends StatelessWidget {
             url: PlayScreen.cardBackUrl, fit: BoxFit.contain),
       );
     }
-    return AspectRatio(aspectRatio: 3.5 / 5, child: child);
+    return AspectRatio(aspectRatio: rotated ? 3.5 / 5 : 5 / 3.5, child: child);
   }
 }
 
@@ -203,14 +223,14 @@ class DeckActionDialogState {
 }
 
 class DeckActionDialog extends StatefulWidget {
-  final DeckListModel model;
+  final DeckModel deck;
   final PlayState playState;
   final DeckActionDialogState dialogState;
   const DeckActionDialog(
       {super.key,
-      required this.model,
       required this.dialogState,
-      required this.playState});
+      required this.playState,
+      required this.deck});
 
   @override
   State<DeckActionDialog> createState() => _DeckActionDialogState();
@@ -314,9 +334,9 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
                       builder: (context) => DeckActionScreen(
+                        deck: widget.deck,
                         state: widget.playState,
-                        deckActionKind: dialogState.selectedLookAhead,
-                        valueX: dialogState.valueX,
+                        dialogState: dialogState,
                       ),
                     ),
                   );
