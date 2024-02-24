@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -61,7 +62,7 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
 
   void loadCards() async {
     var paginableList = await client.searchCards(
-      "t:plane OR t:phenomenon",
+      "layout:planar",
       sortingOrder: SortingOrder.set,
       rollupMode: RollupMode.cards,
     );
@@ -169,6 +170,55 @@ class DeckModel extends ChangeNotifier {
 
   void setName(String name) {
     _name = name;
+    notifyListeners();
+  }
+}
+
+class PlayState extends ChangeNotifier {
+  List<int> openCards = [];
+  late DoubleLinkedQueue<int> permutation;
+  DoubleLinkedQueue<(List<int>, List<int>)> history = DoubleLinkedQueue();
+
+  PlayState(DeckModel deck) {
+    permutation = DoubleLinkedQueue.from(
+        List.generate(deck.cardIds.length, (index) => index)..shuffle());
+  }
+
+  void _trimHistory() {
+    while (history.length > 30) {
+      history.removeLast();
+    }
+  }
+
+  void nextCard() {
+    history.addFirst((List.from(openCards), List.from(permutation)));
+    _trimHistory();
+    if (openCards.isEmpty) {
+      openCards = [permutation.removeFirst()];
+    } else {
+      for (int i in openCards..shuffle()) {
+        permutation.addLast(i);
+      }
+      openCards = [];
+    }
+    notifyListeners();
+  }
+
+  void undo() {
+    if (history.isNotEmpty) {
+      var (openCards_, permutation_) = history.removeFirst();
+      openCards = openCards_;
+      permutation = DoubleLinkedQueue.from(permutation_);
+    } else {
+      if (openCards.isEmpty) {
+        openCards = [permutation.removeLast()];
+      } else {
+        for (int i in openCards..shuffle()) {
+          permutation.addFirst(i);
+        }
+        openCards = [];
+      }
+    }
     notifyListeners();
   }
 }
