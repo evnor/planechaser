@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import 'package:fast_cached_network_image/fast_cached_network_image.dart';
 import 'package:number_selector/number_selector.dart';
 import 'package:planechaser/screens/deck_action_screen.dart';
@@ -24,6 +22,7 @@ class PlayScreen extends StatefulWidget {
 class _PlayScreenState extends State<PlayScreen> {
   late DeckModel deck;
   late PlayState state;
+  DeckActionDialogState dialogState = DeckActionDialogState();
 
   @override
   void initState() {
@@ -68,9 +67,9 @@ class _PlayScreenState extends State<PlayScreen> {
                       showDialog(
                         context: context,
                         builder: (context) => DeckActionDialog(
-                          deck: deck,
                           model: model,
-                          state: state,
+                          playState: state,
+                          dialogState: dialogState,
                         ),
                       );
                     },
@@ -198,27 +197,37 @@ enum DeckActionKind {
   final String longName;
 }
 
+class DeckActionDialogState {
+  DeckActionKind selectedLookAhead = DeckActionKind.lookAtTopX;
+  int valueX = 2;
+}
+
 class DeckActionDialog extends StatefulWidget {
-  final DeckModel deck;
   final DeckListModel model;
-  final PlayState state;
+  final PlayState playState;
+  final DeckActionDialogState dialogState;
   const DeckActionDialog(
       {super.key,
-      required this.deck,
       required this.model,
-      required this.state});
+      required this.dialogState,
+      required this.playState});
 
   @override
   State<DeckActionDialog> createState() => _DeckActionDialogState();
 }
 
 class _DeckActionDialogState extends State<DeckActionDialog> {
-  DeckActionKind _selectedLookAhead = DeckActionKind.lookAtTopX;
-  int _valueX = 2;
+  late DeckActionDialogState dialogState;
+
+  @override
+  void initState() {
+    super.initState();
+    dialogState = widget.dialogState;
+  }
 
   void _activate(DeckActionKind selection) {
     setState(() {
-      _selectedLookAhead = selection;
+      dialogState.selectedLookAhead = selection;
     });
   }
 
@@ -254,7 +263,7 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
                     }
                   },
                   child: Text(
-                    _selectedLookAhead.longName,
+                    dialogState.selectedLookAhead.longName,
                     textAlign: TextAlign.start,
                   ),
                 );
@@ -275,7 +284,7 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
                         min: 1,
                         width: null,
                         height: 36.0,
-                        current: _valueX,
+                        current: dialogState.valueX,
                         backgroundColor: Colors.transparent,
                         borderColor: Theme.of(context).primaryColorDark,
                         decrementIcon: Icons.remove,
@@ -288,7 +297,7 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
                         minTooltip: null,
                         onUpdate: (number) {
                           setState(() {
-                            _valueX = number;
+                            dialogState.valueX = number;
                           });
                         },
                       ),
@@ -305,10 +314,9 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
                       builder: (context) => DeckActionScreen(
-                        deck: widget.deck,
-                        state: widget.state,
-                        deckActionKind: _selectedLookAhead,
-                        valueX: _valueX,
+                        state: widget.playState,
+                        deckActionKind: dialogState.selectedLookAhead,
+                        valueX: dialogState.valueX,
                       ),
                     ),
                   );

@@ -1,18 +1,14 @@
-import 'dart:collection';
-
 import 'package:flutter/material.dart';
 import 'package:planechaser/models.dart';
 import 'package:planechaser/screens/play_screen.dart';
 
 class DeckActionScreen extends StatefulWidget {
   static const String routeName = "/deckAction";
-  final DeckModel deck;
   final PlayState state;
   final DeckActionKind deckActionKind;
   final int valueX;
   const DeckActionScreen({
     super.key,
-    required this.deck,
     required this.state,
     required this.deckActionKind,
     required this.valueX,
