@@ -195,9 +195,11 @@ class CardListView extends StatelessWidget {
       builder: (context, isInDeck, child) => GestureDetector(
         onTap: () {
           if (isInDeck) {
-            Provider.of<DeckModel>(context, listen: false).removeCard(card.id);
+            Provider.of<DeckModel>(context, listen: false)
+                .removeCard(card.oracleId);
           } else {
-            Provider.of<DeckModel>(context, listen: false).addCard(card.id);
+            Provider.of<DeckModel>(context, listen: false)
+                .addCard(card.oracleId);
           }
         },
         child: Stack(
@@ -214,7 +216,7 @@ class CardListView extends StatelessWidget {
           ],
         ),
       ),
-      selector: (_, deck) => deck.cardIds.contains(card.id),
+      selector: (_, deck) => deck.cardIds.contains(card.oracleId),
     );
   }
 }

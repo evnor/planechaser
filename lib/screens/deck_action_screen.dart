@@ -1,9 +1,10 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:planechaser/models.dart';
 import 'package:planechaser/screens/play_screen.dart';
 import 'package:provider/provider.dart';
+
+// Relevant cards:
+// https://scryfall.com/search?q=%28o%3Aplane+OR+layout%3Aplanar%29+-o%3Aplaneswalker+%28+o%3A%22look%22+OR+o%3A%22deck%22+OR+o%3A%22planar+deck%22%29&unique=cards&as=text&order=name
 
 enum CardAction {
   goTo,
@@ -55,10 +56,10 @@ class _DeckActionScreenState extends State<DeckActionScreen> {
           var card = iter.current;
           if (card == null) break;
           if (card.typeLine.contains("Plane")) {
-            actionableCards.add(card.id);
+            actionableCards.add(card.oracleId);
             numPlanes++;
           } else {
-            otherRevealedCards.add(card.id);
+            otherRevealedCards.add(card.oracleId);
           }
         }
         break;
@@ -157,7 +158,7 @@ class _DeckActionScreenState extends State<DeckActionScreen> {
             Stack(
               children: [
                 CardDisplay(
-                  card: deckListModel.cards[id],
+                  id: id,
                   rotated: false,
                 ),
                 Center(
@@ -223,7 +224,7 @@ class _DeckActionScreenState extends State<DeckActionScreen> {
             ),
             for (String id in otherRevealedCards)
               CardDisplay(
-                card: deckListModel.cards[id],
+                id: id,
                 rotated: false,
               ),
           ]

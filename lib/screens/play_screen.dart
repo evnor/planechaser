@@ -46,10 +46,6 @@ class _PlayScreenState extends State<PlayScreen> {
     super.dispose();
   }
 
-  MtgCard? getCard(int idx, DeckListModel model, DeckModel deck) {
-    return model.cards[deck.cardIds[idx]];
-  }
-
   @override
   Widget build(BuildContext context) {
     WakelockPlus.enable();
@@ -95,7 +91,11 @@ class _PlayScreenState extends State<PlayScreen> {
                   Logger().i((
                     "Redrawing card display",
                     state.history.length,
-                    state.openCards
+                    state.openCards,
+                    state.openCards.map((e) {
+                      var card = model.cards[deck.cardIds[e]];
+                      return (card?.oracleId, card?.name);
+                    }).toList()
                   ));
                   return GestureDetector(
                     onTap: state.nextCard,
@@ -105,7 +105,7 @@ class _PlayScreenState extends State<PlayScreen> {
                               for (int i in state.openCards)
                                 CardDisplay(
                                   key: Key(i.toString()),
-                                  card: getCard(i, model, deck),
+                                  id: deck.cardIds[i],
                                   rotated: state.openCards.length <= 1,
                                 ),
                             ]
@@ -126,84 +126,112 @@ class _PlayScreenState extends State<PlayScreen> {
   }
 }
 
-class CardDisplay extends StatelessWidget {
-  final MtgCard? card;
+class CardDisplay extends StatefulWidget {
+  final String? id;
   final bool rotated;
-  const CardDisplay({super.key, this.card, this.rotated = false});
+  const CardDisplay({super.key, this.id, this.rotated = false});
+
+  @override
+  State<CardDisplay> createState() => _CardDisplayState();
+}
+
+class _CardDisplayState extends State<CardDisplay> {
+  Future<MtgCard?>? _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.id != null) {
+      var model = Provider.of<DeckListModel>(context, listen: false);
+      _future = model.fetchId(widget.id!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final Widget child;
-    if (card != null) {
-      child =
-              // Hero(
-              //   tag: card!.oracleId,
-              //   child:
-              card?.imageUris != null
-                  ? RotatedBox(
-                      quarterTurns: rotated ? 0 : 1,
-                      child: FastCachedImage(
-                        fadeInDuration: const Duration(milliseconds: 200),
-                        url: card!.imageUris!.normal.toString(),
-                        loadingBuilder: (context, progress) => RotatedBox(
-                          quarterTurns: rotated ? 0 : 3,
-                          child: AspectRatio(
-                            aspectRatio: 3.5 / 5,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: CircularProgressIndicator(
-                                color: Theme.of(context).highlightColor,
-                                value: 0.25,
-                              ),
-                            ),
-                          ),
-                        ),
-                        errorBuilder: (context, obj, trace) => Card(
-                          child: AspectRatio(
-                            aspectRatio: 3.5 / 5,
-                            child: Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 16.0),
-                                    child: Text(
-                                      card!.name,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineSmall,
-                                    ),
-                                  ),
-                                  Text(
-                                    card!.oracleText ?? "",
-                                    style:
-                                        Theme.of(context).textTheme.bodyLarge,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        fit: BoxFit.contain,
-                      ),
-                    )
-                  : Container(
-                      color: Colors.red,
-                    )
-          // ,)
-          ;
-    } else {
+    if (widget.id == null) {
       child = RotatedBox(
-        quarterTurns: rotated ? 3 : 0,
+        quarterTurns: widget.rotated ? 3 : 0,
         child: const FastCachedImage(
             url: PlayScreen.cardBackUrl, fit: BoxFit.contain),
       );
+    } else {
+      child = FutureBuilder(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            Logger().e(snapshot.error);
+            return Container();
+          }
+          if (!snapshot.hasData) {
+            return Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).highlightColor,
+                value: 0.25,
+              ),
+            );
+          } else {
+            var card = snapshot.data!;
+            return card.imageUris != null
+                ? RotatedBox(
+                    quarterTurns: widget.rotated ? 0 : 1,
+                    child: FastCachedImage(
+                      fadeInDuration: const Duration(milliseconds: 200),
+                      url: card.imageUris!.normal.toString(),
+                      loadingBuilder: (context, progress) => RotatedBox(
+                        quarterTurns: widget.rotated ? 0 : 3,
+                        child: AspectRatio(
+                          aspectRatio: 3.5 / 5,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: CircularProgressIndicator(
+                              color: Theme.of(context).highlightColor,
+                              value: 0.25,
+                            ),
+                          ),
+                        ),
+                      ),
+                      errorBuilder: (context, obj, trace) => Card(
+                        child: AspectRatio(
+                          aspectRatio: 3.5 / 5,
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 16.0),
+                                  child: Text(
+                                    card.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall,
+                                  ),
+                                ),
+                                Text(
+                                  card.oracleText ?? "",
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      fit: BoxFit.contain,
+                    ),
+                  )
+                : Container(
+                    color: Colors.red,
+                  );
+          }
+        },
+      );
     }
-    return AspectRatio(aspectRatio: rotated ? 3.5 / 5 : 5 / 3.5, child: child);
+    return AspectRatio(
+        aspectRatio: widget.rotated ? 3.5 / 5 : 5 / 3.5, child: child);
   }
 }
 
