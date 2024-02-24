@@ -23,8 +23,7 @@ class PlayScreen extends StatefulWidget {
 
 class _PlayScreenState extends State<PlayScreen> {
   late DeckModel deck;
-  late DoubleLinkedQueue<int> permutation;
-  List<int> openCards = [];
+  late PlayState state;
 
   @override
   void initState() {
@@ -35,8 +34,7 @@ class _PlayScreenState extends State<PlayScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     deck = ModalRoute.of(context)!.settings.arguments as DeckModel;
-    permutation = DoubleLinkedQueue.from(
-        List.generate(deck.cardIds.length, (index) => index)..shuffle());
+    state = PlayState(deck);
   }
 
   @override
@@ -47,28 +45,6 @@ class _PlayScreenState extends State<PlayScreen> {
 
   MtgCard? getCard(int idx, DeckListModel model, DeckModel deck) {
     return model.cards[deck.cardIds[idx]];
-  }
-
-  void nextCard() {
-    if (openCards.isEmpty) {
-      openCards = [permutation.removeFirst()];
-    } else {
-      for (int i in openCards..shuffle()) {
-        permutation.addLast(i);
-      }
-      openCards = [];
-    }
-  }
-
-  void prevCard() {
-    if (openCards.isEmpty) {
-      openCards = [permutation.removeLast()];
-    } else {
-      for (int i in openCards..shuffle()) {
-        permutation.addFirst(i);
-      }
-      openCards = [];
-    }
   }
 
   @override
@@ -82,53 +58,50 @@ class _PlayScreenState extends State<PlayScreen> {
       },
       child: Consumer<DeckListModel>(
         builder: (context, model, _) {
-          return Scaffold(
-            appBar: AppBar(
-              actions: [
-                IconButton(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => DeckActionDialog(
-                        deck: deck,
-                        model: model,
-                        permutation: permutation,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.remove_red_eye_outlined),
+          return ChangeNotifierProvider.value(
+            value: state,
+            child: Scaffold(
+              appBar: AppBar(
+                actions: [
+                  IconButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => DeckActionDialog(
+                          deck: deck,
+                          model: model,
+                          state: state,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.remove_red_eye_outlined),
+                  ),
+                  IconButton(
+                    onPressed: state.undo,
+                    icon: const Icon(Icons.undo),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.black,
+              body: Consumer<PlayState>(
+                builder: (context, state, child) => GestureDetector(
+                  onTap: state.nextCard,
+                  child: ListView(
+                    children: state.openCards.isNotEmpty
+                        ? [
+                            for (int i in state.openCards)
+                              CardDisplay(
+                                card: getCard(i, model, deck),
+                                rotated: state.openCards.length <= 1,
+                              ),
+                          ]
+                        : [
+                            const CardDisplay(
+                              rotated: true,
+                            )
+                          ],
+                  ),
                 ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      prevCard();
-                    });
-                  },
-                  icon: const Icon(Icons.undo),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.black,
-            body: GestureDetector(
-              onTap: () {
-                setState(() {
-                  nextCard();
-                });
-              },
-              child: ListView(
-                children: openCards.isNotEmpty
-                    ? [
-                        for (int i in openCards)
-                          CardDisplay(
-                            card: getCard(i, model, deck),
-                            rotated: openCards.length <= 1,
-                          ),
-                      ]
-                    : [
-                        const CardDisplay(
-                          rotated: true,
-                        )
-                      ],
               ),
             ),
           );
@@ -228,12 +201,12 @@ enum DeckActionKind {
 class DeckActionDialog extends StatefulWidget {
   final DeckModel deck;
   final DeckListModel model;
-  final DoubleLinkedQueue<int> permutation;
+  final PlayState state;
   const DeckActionDialog(
       {super.key,
       required this.deck,
       required this.model,
-      required this.permutation});
+      required this.state});
 
   @override
   State<DeckActionDialog> createState() => _DeckActionDialogState();
@@ -302,6 +275,7 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
                         min: 1,
                         width: null,
                         height: 36.0,
+                        current: _valueX,
                         backgroundColor: Colors.transparent,
                         borderColor: Theme.of(context).primaryColorDark,
                         decrementIcon: Icons.remove,
@@ -332,7 +306,7 @@ class _DeckActionDialogState extends State<DeckActionDialog> {
                     MaterialPageRoute(
                       builder: (context) => DeckActionScreen(
                         deck: widget.deck,
-                        permutation: widget.permutation,
+                        state: widget.state,
                         deckActionKind: _selectedLookAhead,
                         valueX: _valueX,
                       ),
