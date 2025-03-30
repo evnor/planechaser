@@ -214,6 +214,12 @@ class DeckModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setCards(List<String> ids) {
+    _cardIds.clear();
+    _cardIds.addAll(ids);
+    notifyListeners();
+  }
+
   void setName(String name) {
     _name = name;
     notifyListeners();
