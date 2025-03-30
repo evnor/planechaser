@@ -21,6 +21,17 @@ class _DeckEditScreenState extends State<DeckEditScreen> {
 
   Future<List<MtgCard>>? _searchResult;
 
+  int compareCards(MtgCard a, MtgCard b) {
+    //
+    final deprioritised = ["unk", "pssc"];
+    final prio = (deprioritised.contains(a.set) ? 1 : 0)
+        .compareTo(deprioritised.contains(b.set) ? 1 : 0);
+    if (prio != 0) {
+      return prio;
+    }
+    return a.name.compareTo(b.name);
+  }
+
   @override
   Widget build(BuildContext context) {
     final deck = ModalRoute.of(context)!.settings.arguments as DeckModel;
@@ -86,13 +97,13 @@ class _DeckEditScreenState extends State<DeckEditScreen> {
                             .map((id) => value.cards[id])
                             .whereType<MtgCard>()
                             .toList()
-                          ..sort((a, b) => a.name.compareTo(b.name));
+                          ..sort(compareCards);
                         cardList.addAll(value.allIds
                             .where((id) => !deck.cardIds.contains(id))
                             .map((id) => value.cards[id])
                             .whereType<MtgCard>()
                             .toList()
-                          ..sort((a, b) => a.name.compareTo(b.name)));
+                          ..sort(compareCards));
                         return ListView.builder(
                           controller: _scrollController,
                           itemCount: cardList.length,
