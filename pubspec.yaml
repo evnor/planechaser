@@ -46,6 +46,7 @@ dependencies:
   wakelock_plus: ^1.2.11
   number_selector: ^1.0.7
   logger: ^2.0.2+1
+  package_info_plus: ^8.3.0
 
 dev_dependencies:
   flutter_test:

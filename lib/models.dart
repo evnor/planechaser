@@ -1,8 +1,9 @@
 import 'dart:collection';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:http/retry.dart';
 import 'package:logger/logger.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:scryfall_api/scryfall_api.dart';
 import 'package:localstore/localstore.dart';
 import 'package:http/http.dart' as http;
@@ -10,8 +11,30 @@ import 'package:uuid/uuid.dart';
 
 import 'screens/deck_action_screen.dart';
 
+class PlanechaserClient extends http.BaseClient {
+  final String userAgent;
+  final http.Client _inner;
+  Duration delay = Duration(milliseconds: 75);
+  Future<void>? lock = Future<void>.value();
+
+  PlanechaserClient(this.userAgent) : _inner = http.Client();
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    request.headers['User-Agent'] = userAgent;
+    request.headers['Accept'] = "application/json";
+    await lock;
+    lock = Future.delayed(delay);
+    final response = await _inner.send(request);
+    if (response.statusCode == 429) {
+      delay *= 1.4;
+    }
+    return response;
+  }
+}
+
 class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
-  final ScryfallApiClient client = ScryfallApiClient();
+  late final ScryfallApiClient client;
   final Localstore db = Localstore.instance;
 
   final List<DeckModel> _decks = [];
@@ -33,7 +56,18 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
     };
   }
 
-  void init() {
+  void init() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    client = ScryfallApiClient(
+      httpClient: RetryClient(
+        PlanechaserClient("${packageInfo.packageName}/${packageInfo.version}"),
+        delay: (_) => Duration.zero,
+        when: (resp) => resp.statusCode != 200,
+        onRetry: (req, resp, r) {
+          Logger().w("Retrying request ($r)");
+        },
+      ),
+    );
     loadCards();
     loadDecks();
     WidgetsBinding.instance.addObserver(this);
@@ -66,35 +100,20 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void loadCards() async {
-    var paginableList = await client.searchCards(
-      "layout:planar",
-      sortingOrder: SortingOrder.set,
+    int page = 0;
+    late PaginableList<MtgCard> paginableList;
+    do {
+paginableList = await client.searchCards("layout:planar",
+      sortingOrder: SortingOrder.name,
       rollupMode: RollupMode.cards,
-    );
+page: page);
     _cards.addAll(paginableList.data
         .asMap()
         .map((key, value) => MapEntry(value.oracleId, value)));
-    var delay = const Duration(milliseconds: 75);
-    while (paginableList.hasMore) {
-      await Future.delayed(delay, () {
-        http.get(paginableList.nextPage!).then((response) {
-          if (response.statusCode != 200) {
-            if (response.statusCode == 429) {
-              delay *= 1.4;
-            }
-            return;
-          }
-          final json = jsonDecode(response.body);
-          paginableList = PaginableList.fromJson(
-            json,
-            (card) => MtgCard.fromJson(card as Map<String, dynamic>),
-          );
-          _cards.addAll(paginableList.data
-              .asMap()
-              .map((key, value) => MapEntry(value.oracleId, value)));
-        });
-      });
-    }
+    if (paginableList.warnings != null) {
+        Logger().w("Scryfall warning: ${paginableList.warnings}");
+      }
+    } while (paginableList.hasMore);
     Logger().i("Loaded ${_cards.length} cards");
     notifyListeners();
   }
