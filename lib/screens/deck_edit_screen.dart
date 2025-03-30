@@ -122,8 +122,10 @@ class _DeckEditScreenState extends State<DeckEditScreen> {
                         return ListView.builder(
                           controller: _scrollController,
                           itemCount: cardList.length,
-                          itemBuilder: (context, index) =>
-                              CardListView(cardList[index]),
+                          itemBuilder: (context, index) => CardListView(
+                            cardList[index],
+                            key: ValueKey(cardList[index].id),
+                          ),
                           prototypeItem: value.allCards.isNotEmpty
                               ? CardListView(value.allCards.first)
                               : null,
