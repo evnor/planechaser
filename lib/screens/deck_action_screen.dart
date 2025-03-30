@@ -92,34 +92,6 @@ class _DeckActionScreenState extends State<DeckActionScreen> {
       ),
       body: ListView(
         children: [
-          // Row(
-          //   mainAxisSize: MainAxisSize.max,
-          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //   crossAxisAlignment: CrossAxisAlignment.center,
-          //   children: [
-          // Expanded(
-          //   child: Padding(
-          //     padding: const EdgeInsets.symmetric(
-          //         horizontal: 16.0, vertical: 0.0),
-          //     child: Text(
-          //       "Remaining go to bottom. Randomize them?",
-          //       style: Theme.of(context).textTheme.bodyLarge,
-          //     ),
-          //   ),
-          // ),
-          //     Padding(
-          //       padding: const EdgeInsets.all(8.0),
-          //       child: Switch(
-          //         onChanged: (value) {
-          //           setState(() {
-          //             randomizeRemaining = value;
-          //           });
-          //         },
-          //         value: randomizeRemaining,
-          //       ),
-          //     ),
-          //   ],
-          // ),
           Row(
             mainAxisSize: MainAxisSize.max,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -169,7 +141,7 @@ class _DeckActionScreenState extends State<DeckActionScreen> {
                       child: SegmentedButton(
                         style: SegmentedButton.styleFrom(
                             backgroundColor:
-                                Theme.of(context).colorScheme.background,
+                                Theme.of(context).colorScheme.surface,
                             elevation: 5,
                             textStyle: Theme.of(context)
                                 .textTheme
@@ -179,14 +151,14 @@ class _DeckActionScreenState extends State<DeckActionScreen> {
                                 vertical: width / 5 * 3.5 * 0.04)),
                         segments: const [
                           ButtonSegment(
+                            value: CardAction.bottom,
+                            label: Text("Bottom"),
+                          ),
+                          ButtonSegment(
                             value: CardAction.goTo,
                             label: Text(
                               "Go to",
                             ),
-                          ),
-                          ButtonSegment(
-                            value: CardAction.bottom,
-                            label: Text("Bottom"),
                           ),
                         ],
                         onSelectionChanged: (selection) {

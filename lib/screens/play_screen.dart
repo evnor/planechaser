@@ -50,7 +50,7 @@ class _PlayScreenState extends State<PlayScreen> {
   Widget build(BuildContext context) {
     WakelockPlus.enable();
     return PopScope(
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, _) {
         if (didPop) {
           WakelockPlus.disable();
         }
@@ -88,15 +88,11 @@ class _PlayScreenState extends State<PlayScreen> {
               body: Consumer<DeckModel>(
                 builder: (context, deck, child) =>
                     Consumer<PlayState>(builder: (context, state, child) {
-                  Logger().i((
-                    "Redrawing card display",
-                    state.history.length,
-                    state.openCards,
-                    state.openCards.map((e) {
-                      var card = model.cards[deck.cardIds[e]];
-                      return (card?.oracleId, card?.name);
-                    }).toList()
-                  ));
+                  Logger()
+                      .i("Redrawing card display: ${state.openCards.map((e) {
+                    var card = model.cards[deck.cardIds[e]];
+                    return (card?.oracleId, card?.name);
+                  }).toList()}");
                   return GestureDetector(
                     onTap: state.nextCard,
                     child: ListView(

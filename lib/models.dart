@@ -40,8 +40,8 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
   final List<DeckModel> _decks = [];
   final Map<String, MtgCard> _cards = {};
   List<DeckModel> get decks => List.unmodifiable(_decks);
-  Map<String, MtgCard> get cards => _cards;
-  List<String> get allIds => _cards.keys.toList();
+  Map<String, MtgCard> get cards => Map.unmodifiable(_cards);
+  Iterable<String> get allIds => _cards.keys;
   Iterable<MtgCard> get allCards => _cards.values;
 
   DeckListModel();
@@ -103,14 +103,14 @@ class DeckListModel extends ChangeNotifier with WidgetsBindingObserver {
     int page = 0;
     late PaginableList<MtgCard> paginableList;
     do {
-paginableList = await client.searchCards("layout:planar",
-      sortingOrder: SortingOrder.name,
-      rollupMode: RollupMode.cards,
-page: page);
-    _cards.addAll(paginableList.data
-        .asMap()
-        .map((key, value) => MapEntry(value.oracleId, value)));
-    if (paginableList.warnings != null) {
+      paginableList = await client.searchCards("layout:planar",
+          sortingOrder: SortingOrder.name,
+          rollupMode: RollupMode.cards,
+          page: page);
+      _cards.addAll(paginableList.data
+          .asMap()
+          .map((key, value) => MapEntry(value.oracleId, value)));
+      if (paginableList.warnings != null) {
         Logger().w("Scryfall warning: ${paginableList.warnings}");
       }
     } while (paginableList.hasMore);

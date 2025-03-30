@@ -25,7 +25,7 @@ class _DeckEditScreenState extends State<DeckEditScreen> {
   Widget build(BuildContext context) {
     final deck = ModalRoute.of(context)!.settings.arguments as DeckModel;
     return PopScope(
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, _) async {
         if (didPop) {
           await Provider.of<DeckListModel>(context, listen: false).saveDecks();
         }
